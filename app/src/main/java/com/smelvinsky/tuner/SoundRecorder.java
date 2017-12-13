@@ -13,7 +13,7 @@ import java.nio.ByteBuffer;
 
 public class SoundRecorder
 {
-    final private int SAMPLE_RATE = 44100;
+    final private int SAMPLE_RATE = 11025;
     final private String LOG_TAG = "SoundRecorder class";
 
     private AudioRecord audioRecord;
@@ -22,15 +22,9 @@ public class SoundRecorder
 
     SoundRecorder()
     {
-        bufferSize = AudioRecord.getMinBufferSize(SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT);
-        Log.i(LOG_TAG, "Given buffer length: " + bufferSize);
+        bufferSize = 8192 * 4;
 
-        if (bufferSize == AudioRecord.ERROR || bufferSize == AudioRecord.ERROR_BAD_VALUE)
-        {
-            bufferSize = SAMPLE_RATE * 2;
-        }
-
-        audioRecord = new AudioRecord(MediaRecorder.AudioSource.DEFAULT, SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, bufferSize);
+        audioRecord = new AudioRecord(MediaRecorder.AudioSource.MIC, SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, bufferSize);
 
         if (audioRecord.getState() != AudioRecord.STATE_INITIALIZED)
         {
@@ -51,11 +45,7 @@ public class SoundRecorder
 
     public int read(short[] buffer, int sizeInShorts)
     {
-        int bytesRead = 0;
-
-        bytesRead = audioRecord.read(buffer, 0, sizeInShorts);
-
-        return bytesRead;
+        return audioRecord.read(buffer, 0, sizeInShorts);
     }
 
     void stop() throws IllegalStateException

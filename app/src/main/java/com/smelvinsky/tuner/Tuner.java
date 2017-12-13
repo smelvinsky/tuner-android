@@ -1,12 +1,15 @@
 package com.smelvinsky.tuner;
 
 import android.Manifest;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -23,18 +26,24 @@ public class Tuner extends AppCompatActivity
 
     private Pitchmeter pitchmeter = new Pitchmeter(Note.A, 440, Octave.oneLine);
 
+    /* GUI components */
+    private TextView freqIndicator;
+    private TextView noteIndicator;
+    private TextView sharpNoteIndicator;
+    private ImageView greenDot;
+
     /* binary semaphore for thread sync */
     private final Semaphore binarySemaphore = new Semaphore(1);
 
     /* recording thread */
-    private Runnable recordingThread = new Runnable()
+    private Runnable recordingRunnable = new Runnable()
     {
         @Override
         public void run()
         {
-            int samplesRead = 0;
+            int samplesRead;
 
-            while (true)
+            while (!Thread.currentThread().isInterrupted())
             {
                 samplesRead = soundRecorder.read(audioDataBuffer, audioDataBuffer.length);
                 Log.i(LOG_TAG, samplesRead + " samples read");
@@ -48,6 +57,7 @@ public class Tuner extends AppCompatActivity
                     }
 
                     postFFTsignal = SoundProcessing.fft(postFFTsignal);
+
                 }
                 catch (InterruptedException ie)
                 {
@@ -57,7 +67,7 @@ public class Tuner extends AppCompatActivity
                 finally
                 {
                     binarySemaphore.release();
-                    new Thread(noteIndicationThread).start();
+                    new Thread(noteIndicationRunnable).start();
                 }
 
                 Log.i(LOG_TAG, Arrays.toString(postFFTsignal));
@@ -67,7 +77,7 @@ public class Tuner extends AppCompatActivity
 
     /* GUI - note indication thread                     */
     /* This thread is being run from recordingThread    */
-    private Runnable noteIndicationThread = new Runnable()
+    private Runnable noteIndicationRunnable = new Runnable()
     {
         @Override
         public void run()
@@ -75,8 +85,6 @@ public class Tuner extends AppCompatActivity
             try
             {
                 binarySemaphore.acquire();
-                double dominantFreq = pitchmeter.findDominantFreq(100, 1200, postFFTsignal, soundRecorder.getSampleRate(), audioDataBuffer.length);
-                Log.i(LOG_TAG, "Dominant frequency is: " + dominantFreq);
             }
             catch (InterruptedException ie)
             {
@@ -85,10 +93,61 @@ public class Tuner extends AppCompatActivity
             }
             finally
             {
+                final double dominantFreq = pitchmeter.findDominantFreq(100, 1200, postFFTsignal, soundRecorder.getSampleRate(), audioDataBuffer.length, 40000.0);
+
+                if (dominantFreq != 0)
+                {
+                    final NoteObject noteObject = pitchmeter.getNoteByFreq(dominantFreq);
+
+                    runOnUiThread(new Runnable()
+                    {
+                        @Override
+                        public void run()
+                        {
+                            freqIndicator.setText(String.format("%.2f", dominantFreq));
+                            noteIndicator.setText(noteObject.getNote().toString());
+                            if (noteObject.getNote() == Note.Cis ||
+                                    noteObject.getNote() == Note.Dis ||
+                                    noteObject.getNote() == Note.Fis ||
+                                    noteObject.getNote() == Note.Gis ||
+                                    noteObject.getNote() == Note.Ais)
+                            {
+                                sharpNoteIndicator.setText("#");
+                            }
+                            else
+                            {
+                                sharpNoteIndicator.setText("");
+                            }
+
+                            pitchmeter.checkCorrectness(greenDot, dominantFreq, noteObject);
+
+                            Log.i(LOG_TAG, "Dominant frequency is: " + dominantFreq);
+                            Log.i(LOG_TAG, "Note is:" + noteObject.getNote().toString() + " " + noteObject.getOctave().toString());
+                        }
+                    });
+                }
+                else
+                {
+                    runOnUiThread(new Runnable()
+                    {
+                        @Override
+                        public void run()
+                        {
+                            freqIndicator.setText(String.format("%.2f", dominantFreq));
+                            noteIndicator.setText("?");
+                            sharpNoteIndicator.setText("");
+                            greenDot.setVisibility(View.INVISIBLE);
+                        }
+                    });
+                }
+
                 binarySemaphore.release();
             }
         }
     };
+
+    /* Threads */
+    private Thread recordingThread = new Thread(recordingRunnable);
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
@@ -96,14 +155,20 @@ public class Tuner extends AppCompatActivity
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_tuner);
 
+        Log.wtf(LOG_TAG, "On Create");
+
         /* Check AUDIO permission and request if necessary */
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED)
         {
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.RECORD_AUDIO}, REQUEST_AUDIO_PERMISSION);
         }
 
-        TextView noteIndicator = findViewById(R.id.note_indicator);
-        noteIndicator.setText("L");
+        noteIndicator = findViewById(R.id.note_indicator);
+        freqIndicator = findViewById(R.id.freq_indicator);
+        sharpNoteIndicator = findViewById(R.id.sharp_note_indicator);
+        greenDot =findViewById(R.id.green_dot);
+
+        greenDot.setVisibility(View.INVISIBLE);
 
         try
         {
@@ -122,13 +187,15 @@ public class Tuner extends AppCompatActivity
             finish();
         }
 
-        new Thread(recordingThread).start();
+        recordingThread.start();
 
     }
 
     @Override
-    protected void onDestroy() {
+    protected void onDestroy()
+    {
         super.onDestroy();
+        Log.wtf(LOG_TAG, "On destroy");
 
         try
         {
@@ -141,5 +208,87 @@ public class Tuner extends AppCompatActivity
         {
             Log.wtf(LOG_TAG, "Couldn't release resources");
         }
+
+    }
+
+    @Override
+    protected void onStart()
+    {
+        super.onStart();
+        Log.wtf(LOG_TAG, "On Start");
+        try
+        {
+            soundRecorder.startRecording();
+            try
+            {
+                recordingThread.start();
+            }
+            catch (IllegalThreadStateException ile)
+            {
+                Log.w(LOG_TAG, "Thread already started");
+            }
+        }
+        catch (IllegalStateException ise)
+        {
+            Log.e(LOG_TAG, "Couldn't restart recording.");
+        }
+    }
+
+    @Override
+    protected void onResume()
+    {
+        super.onResume();
+        try
+        {
+            soundRecorder.startRecording();
+            try
+            {
+                recordingThread.start();
+            }
+            catch (IllegalThreadStateException ile)
+            {
+                Log.w(LOG_TAG, "Thread already started");
+            }
+        }
+        catch (IllegalStateException ise)
+        {
+            Log.e(LOG_TAG, "Couldn't restart recording.");
+        }
+    }
+
+    @Override
+    protected void onPause()
+    {
+        super.onPause();
+        try
+        {
+            soundRecorder.stop();
+            recordingThread.interrupt();
+        }
+        catch (IllegalStateException ise)
+        {
+            Log.e(LOG_TAG, "Couldn't stop recording.");
+        }
+    }
+
+    @Override
+    protected void onStop()
+    {
+        super.onStop();
+        try
+        {
+            soundRecorder.stop();
+            recordingThread.interrupt();
+        }
+        catch (IllegalStateException ise)
+        {
+            Log.e(LOG_TAG, "Couldn't stop recording.");
+        }
+    }
+
+    public void spectrometerOn(View v)
+    {
+        Intent intent = new Intent(Tuner.this, Spectrometer.class);
+        startActivity(intent);
     }
 }

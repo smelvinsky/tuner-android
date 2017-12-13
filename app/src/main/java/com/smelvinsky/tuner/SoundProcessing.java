@@ -62,45 +62,15 @@ final public class SoundProcessing
         return data;
     }
 
-    static double[] normalize(double[] data , double maxValueToNormalize)
+    static double[] getMagnitude(double[] real, double[] imag)
     {
-        double[] outputData = new double[data.length];
-        System.arraycopy(data, 0, outputData, 0, data.length);
+        double magnitude[] = new double[real.length];
 
-        double maxValue = 0;
-
-        if(outputData[0] > maxValueToNormalize)
+        for (int i = 0; i < real.length; i++)
         {
-            outputData[0] = maxValueToNormalize;
+            magnitude[i] = Math.sqrt((real[i] * real[i]) + (imag[i] + imag[i]));
         }
 
-        for (double d : outputData)
-        {
-            if (d > maxValue)
-            {
-                maxValue = d;
-            }
-        }
-
-        for (double d : outputData)
-        {
-            d = (d / maxValue) * maxValueToNormalize;
-        }
-
-        return outputData;
+        return magnitude;
     }
-
-    static double[] logScale (double[] data)
-    {
-        double[] logScaleData = new double[data.length];
-        System.arraycopy(data, 0, logScaleData, 0, data.length);
-
-        for (double d : logScaleData)
-        {
-            d = 20 * Math.log10(d);
-        }
-
-        return logScaleData;
-    }
-
 }

@@ -1,5 +1,10 @@
 package com.smelvinsky.tuner;
 
+import android.util.Log;
+import android.view.View;
+import android.widget.ImageView;
+
+import java.security.acl.LastOwnerException;
 import java.text.DecimalFormat;
 
 /**
@@ -123,9 +128,9 @@ public class Pitchmeter
         this.noteFreqTable = new NoteFreqTable(definedFixedNote, definedFixedNoteOctave, definedFixedNoteFreq);
     }
 
-    double findDominantFreq(int lowFreq, int hiFreq, double[] postFFTsignal, float sampleRate, int rawDataLenght)
+    double findDominantFreq(int lowFreq, int hiFreq, double[] postFFTsignal, float sampleRate, int rawDataLenght, double threshold)
     {
-        double[] pichmeterData = new double[postFFTsignal.length];
+        double[] pichmeterData = new double[postFFTsignal.length / 2];
         System.arraycopy(postFFTsignal, postFFTsignal.length / 2, pichmeterData, 0, postFFTsignal.length / 2);
 
         if(lowFreq >= hiFreq)
@@ -133,10 +138,8 @@ public class Pitchmeter
             throw new IllegalArgumentException("lowFreq parameter must have lower value than hiFreq");
         }
 
-        double deltaF = 1.0 / (rawDataLenght * (1.0 / ((double) sampleRate - 1.0)));
+        double deltaF = 0.5 / (rawDataLenght * (1.0 / sampleRate));
         double highestValue = 0;
-        int lFreq = lowFreq / 2;
-        int hFreq = hiFreq / 2;
 
         int lowFreqSample = 0;
         int hiFreqSample = 0;
@@ -144,12 +147,12 @@ public class Pitchmeter
 
         for (int i = 0; i < pichmeterData.length; i++)
         {
-            if (i * deltaF < lFreq)
+            if (i * deltaF < lowFreq)
             {
                 lowFreqSample = i + 1;
             }
 
-            if (i * deltaF > hFreq)
+            if (i * deltaF > hiFreq)
             {
                 hiFreqSample = i;
                 break;
@@ -167,6 +170,39 @@ public class Pitchmeter
             }
         }
 
-        return dominantSample * deltaF;
+        System.out.println("VALUE OF DOMINANT SAMPLE: " + highestValue);
+
+        if (highestValue > threshold)
+        {
+            return dominantSample * deltaF;
+        }
+        else
+        {
+            return 0;
+        }
+    }
+
+    NoteObject getNoteByFreq(double freq)
+    {
+        return noteFreqTable.getNoteByFreq(freq);
+    }
+
+    double getFreqByNote(NoteObject noteObject)
+    {
+        return noteFreqTable.getFreqByNote(noteObject);
+    }
+
+    void checkCorrectness(ImageView correctnessIndicator, double dominantFreq, NoteObject noteObject)
+    {
+        double freqDiffrence = Math.abs(dominantFreq - getFreqByNote(noteObject));
+
+        if (freqDiffrence < ( dominantFreq / 100.0) )
+        {
+            correctnessIndicator.setVisibility(View.VISIBLE);
+        }
+        else
+        {
+            correctnessIndicator.setVisibility(View.INVISIBLE);
+        }
     }
 }

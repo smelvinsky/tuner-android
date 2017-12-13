@@ -10,22 +10,85 @@
         android:id="@+id/note_indicator"
         android:layout_width="126dp"
         android:layout_height="235dp"
+        android:layout_marginBottom="16dp"
         android:layout_marginEnd="8dp"
         android:layout_marginStart="8dp"
         android:layout_marginTop="32dp"
         android:gravity="center"
-        android:text="C"
         android:textSize="200sp"
+        android:textColor="#d75a00"
+        app:layout_constraintBottom_toTopOf="@+id/Frequency"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.409" />
 
     <TextView
+        android:id="@+id/sharp_note_indicator"
         android:layout_width="80sp"
         android:layout_height="80sp"
         android:layout_marginTop="50dp"
-        android:text="#"
+        android:textColor="#d75a00"
         android:textSize="70sp"
         app:layout_constraintStart_toEndOf="@+id/note_indicator"
         app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/Frequency"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="8dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="16dp"
+        android:text="Frequency:"
+        android:textColor="#d14c00"
+        app:layout_constraintBottom_toTopOf="@+id/Hz"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/note_indicator" />
+
+    <TextView
+        android:id="@+id/Hz"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="0dp"
+        android:textColor="#d75a00"
+        android:text="Hz"
+        app:layout_constraintEnd_toEndOf="@+id/Frequency"
+        app:layout_constraintTop_toBottomOf="@+id/Frequency" />
+
+    <TextView
+        android:id="@+id/freq_indicator"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="#d75a00"
+        app:layout_constraintStart_toStartOf="@+id/Frequency"
+        app:layout_constraintTop_toBottomOf="@+id/Frequency" />
+
+    <Button
+        android:id="@+id/spectrometer_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="80dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginStart="8dp"
+        android:text="Spectrometer"
+        android:textColor="#ac4800"
+        android:onClick="spectrometerOn"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <ImageView
+        android:id="@+id/green_dot"
+        android:layout_width="16dp"
+        android:layout_height="24dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="8dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/note_indicator"
+        app:srcCompat="@drawable/green_dot" />
+
 </android.support.constraint.ConstraintLayout>
